@@ -38,12 +38,17 @@ build/
 .next/
 *.log
 
-# ---- 个人数据 / 缓存（按需保留，默认忽略）----
-# data/
-# index/
-# *.sqlite
-# *.db
+# ---- 个人数据（绝不提交，仅本地保留）----
+data/
+drafts/
+state/
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
 
-# ---- tmux / 日志 ----
+# ---- 运行时产物 / 缓存 ----
+.cache/
 *.log
 logs/
