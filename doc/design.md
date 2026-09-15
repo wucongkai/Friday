@@ -1,8 +1,11 @@
 # Friday 设计说明（软件工程规范版）
 
-> 会成长的个人助手 —— 个人资料、邮件、办事大厅、手机四端联动。
+> 会成长的个人助手 —— 个人资料、邮件、求职招聘、手机四端联动。
 > 本文按软件工程规范重新设计：以**分层架构 + 端口/适配器 + 依赖倒置**为核心，
 > 目标是「新增需求只需加插件/适配器，更换模型只需换配置或适配器，核心不动」。
+
+> 注：原实验要求的第三项「ehall 办事大厅」按个人求职需求定制为「求职招聘网站填写」，
+> 架构与安全机制不变，仅替换业务场景（BrowserPort 的对象从学校办事大厅改为招聘网站）。
 
 ---
 
@@ -10,7 +13,7 @@
 
 ### 1.1 目标
 
-1. 满足实验五项能力（个人数据库 / smail 邮箱 / ehall / 手机联动 / 能力组合）。
+1. 满足实验五项能力（个人数据库 / smail 邮箱 / 求职招聘 / 手机联动 / 能力组合）。
 2. **可演进**：新增需求、更换 LLM、更换存储，都不需要重写系统。
 3. **可控**：业务规则与安全关卡是确定性代码，LLM 只承担「理解/生成」这类有界职责。
 4. **可测、可审计**：核心不依赖外部服务即可单测；每一次副作用都有确认与日志。
@@ -20,12 +23,12 @@
 **在 MVP 内**：
 - 个人数据库：文件系统 + ripgrep 全文检索 + 引用定位 + 增量重索引。
 - 邮箱：IMAP 收取、去重、往来关联、草稿生成、确认后发送。
-- ehall：登录态 + 1 种只读查询 + 1 种事务（含确认关卡）。
+- 求职招聘：复用个人资料，在招聘网站上自动填写申请表并投递简历（含确认关卡）。
 - 手机端：FastAPI Web 控制台 + 任务队列 + 一次性确认令牌。
 - 一条完整组合流程 + 规则注入（`rules.md`）。
 - 单一 LLM 适配器（OpenAI 兼容），但接口按「可替换」设计。
 
-**明确不在 MVP（架构预留，后续加）**：向量检索、多 LLM Provider、Telegram/多通知渠道、更多 ehall 事务、多用户/鉴权、可观测面板、密钥加密存储。
+**明确不在 MVP（架构预留，后续加）**：向量检索、多 LLM Provider、Telegram/多通知渠道、更多招聘网站/申请表类型、多用户/鉴权、可观测面板、密钥加密存储。
 
 ---
 
@@ -146,7 +149,7 @@ class RiskLevel(str, Enum):
     READ   = "read"      # 只读，自动执行
     DRAFT  = "draft"     # 生成草稿，展示后待确认
     SUBMIT = "submit"    # 提交，必须逐字段回显 + 明确确认
-    DANGER = "danger"    # 退课/撤销等破坏性操作：默认拒绝，绝不自动触发
+    DANGER = "danger"    # 撤销投递/删除账号等破坏性操作：默认拒绝，绝不自动触发
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
@@ -170,14 +173,14 @@ class TaskStatus(str, Enum):
 - `SearchKnowledgeUseCase` / `ReindexKnowledgeUseCase`
 - `ProcessInboxUseCase`（收取→去重→分类→拟稿→通知）
 - `EditDraftUseCase` / `ConfirmAndSendUseCase`
-- `QueryEhallUseCase` / `PrepareFormUseCase` / `ConfirmAndSubmitUseCase`
+- `SearchJobsUseCase` / `FillApplicationUseCase` / `ConfirmAndSubmitUseCase`
 - `SubmitMobileTaskUseCase` / `ListTasksUseCase`
 - `LearnRuleUseCase`（把纠正写回 `rules.md`）
 
 ### 6.2 关键：业务规则在代码，LLM 只做有界的事
 
 这是「换模型不破坏系统」的根本保证。**状态机、去重、风险分级、确认关卡全部是确定性代码**，
-LLM 只负责：分类邮件、提取关键信息（截止时间/待补材料）、起草文本、选择技能。
+LLM 只负责：分类邮件、提取关键信息（职位要求/截止时间/待补材料）、起草文本、选择技能。
 
 ```python
 # application/services/inbox.py（示意）
@@ -223,7 +226,7 @@ pending → running → awaiting_confirmation ──批准──→ done
 | 更换/升级 LLM 模型 | `infrastructure/llm/` 加一个适配器 或 改 `[llm]` 配置 | domain / application / delivery |
 | 调整提示词（按模型微调） | `application/prompts/` 模板资产 | 代码 |
 | 新增能力（日历、网盘…） | 新增 Port + Adapter + UseCase（+可选 Skill） | 既有端口与编排核心 |
-| 新增一种 ehall 事务 | 新增一个 `skills/<name>/` 插件目录 | 核心 |
+| 新增一个招聘网站/申请表 | 新增一个 `skills/<name>/` 插件目录 | 核心 |
 | 换存储 / 检索后端 | 新增 `StateStore` / `KnowledgeStore` 适配器 | 业务逻辑 |
 | 新增通知渠道 | 新增 `NotifierPort` 适配器 | 业务逻辑 |
 | 新增纠正规则 | 写 `memory/rules.md` 数据 | 代码 |
@@ -253,9 +256,9 @@ skills/
 ├── reply_email/
 │   ├── SKILL.md        # 描述、用法、输入输出、风险
 │   └── run.py
-├── ehall_leave_request/
+├── job_application/
 │   ├── SKILL.md
-│   └── run.py          # 封装「填表→preview→等待确认→submit」
+│   └── run.py          # 封装「读职位→填申请表→preview→等待确认→submit」
 └── ...
 ```
 
@@ -270,7 +273,7 @@ skills/
 ```python
 class Confirmation:
     token: str                 # 一次性、短时（如 15 分钟）
-    action: str                # "send_email:draft-12" / "submit_form:leave-3"
+    action: str                # "send_email:draft-12" / "submit_application:job-3"
     risk: RiskLevel
     summary: dict              # 关键字段回显
     consequences: str          # 后果说明
@@ -314,7 +317,7 @@ paths = ["skills", "friday/skills"]
 
 [features]                         # 特性开关：灰度、降级、关危险能力
 mail = true
-ehall = true
+jobs = true
 mobile = true
 ```
 
@@ -324,7 +327,7 @@ mobile = true
 def build_container(cfg: Config) -> Container:
     llm       = make_llm(cfg.llm)                  # 按 provider 选适配器
     mail      = ImapSmtpMail(cfg.mail, cfg.secrets)
-    browser   = PlaywrightBrowser(cfg.ehall)
+    browser   = PlaywrightBrowser(cfg.jobs)
     knowledge = RipgrepKnowledge(cfg.knowledge)
     state     = SqliteState(cfg.storage)
     notifier  = WebNotifier()
@@ -345,7 +348,7 @@ Friday/
 │   │   ├── ports.py            # 端口协议
 │   │   └── skills.py           # Skill 协议 + SkillContext
 │   ├── application/            # 用例编排 + 状态机 + 提示词资产
-│   │   ├── services/           # inbox / drafts / ehall / knowledge / rules
+│   │   ├── services/           # inbox / drafts / jobs / knowledge / rules
 │   │   ├── orchestrator.py     # 确定性状态机
 │   │   └── prompts/            # jinja2 模板（可版本化、按模型微调）
 │   ├── infrastructure/         # 适配器
@@ -364,7 +367,7 @@ Friday/
 │   └── main.py
 ├── skills/                     # 插件式技能（能力扩展点）
 ├── data/                       # 个人资料（Markdown，gitignore）
-│   ├── profile/ contacts/ documents/ events/ correspondence/
+│   ├── profile/ resume/ contacts/ documents/ events/ correspondence/
 │   └── index/                  # 生成的索引（gitignore）
 ├── memory/rules.md             # 纠正规则（提交入库）
 ├── application/prompts -> friday/application/prompts
@@ -399,7 +402,7 @@ Friday/
 2. **P1 走通骨架**：用 Fake 适配器把「手机提交任务 → 状态机 → 返回结果」这条竖切跑通（Walking Skeleton）。
 3. **P2 个人数据库**：真实 `RipgrepKnowledgeStore` + 文件监听增量索引 + 引用定位。
 4. **P3 邮件**：真实 IMAP 收取 + 去重 + 草稿 + 确认发送（接入确认令牌）。
-5. **P4 ehall**：登录态 + 1 只读查询 + 1 事务技能（`RiskLevel` 关卡）。
+5. **P4 求职招聘**：登录态 + 1 个招聘网站 + 1 种申请表技能（`RiskLevel` 关卡）。
 6. **P5 手机端**：FastAPI Web 控制台 + 任务队列 + 确认页。
 7. **P6 组合流程 + 成长机制**：打通完整流程、规则注入、成功流程固化为技能。
 
@@ -419,7 +422,7 @@ Friday/
 | 风险 | 对策 |
 |---|---|
 | 重复发信/提交 | UID + Message-ID 去重；动作与打标同事务；状态机保证幂等 |
-| Agent 自行退课/撤销 | `RiskLevel.DANGER` 默认拒绝；绝不自动触发 |
+| Agent 自行撤销投递/删除账号 | `RiskLevel.DANGER` 默认拒绝；绝不自动触发 |
 | 密钥/个人数据入库 | secrets 目录与 data 目录 gitignore；只提交样例 |
 | 手机端依赖桌面窗口 | 后台 daemon + Web 入口；任务队列持久化 |
 | 模型输出不可信 | 输出过 Pydantic 校验；失败重试/降级；副作用动作不交由模型直接执行 |
