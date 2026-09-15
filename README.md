@@ -15,6 +15,14 @@
 
 > 注：原实验要求第三项为「办理 ehall 事务」，本项目按个人求职需求定制为「求职招聘网站填写」。
 
+## 快速开始
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+friday --help
+```
+
 ## 目录结构
 
 ```

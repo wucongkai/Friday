@@ -1,0 +1,30 @@
+# Friday 非敏感配置。敏感信息（密钥/密码）放 .env，绝不写进本文件。
+
+[llm]
+provider = "openai_compatible"      # 换模型往往只改这一节
+model = ""                          # 由 .env 的 LLM_MODEL 覆盖
+api_base = "https://api.openai.com/v1"
+temperature = 0.2
+max_tokens = 2048
+
+[mail]
+imap_host = ""                      # smail IMAP 地址
+imap_port = 993
+smtp_host = ""                      # smail SMTP 地址
+smtp_port = 465
+
+[storage]
+state = "sqlite"                    # 未来可换 postgres
+db_path = "state/friday.db"
+
+[knowledge]
+backend = "ripgrep"                 # 未来可换 vector
+root = "data"
+
+[skills]
+paths = ["skills"]
+
+[features]                          # 特性开关：灰度、降级、关危险能力
+mail = true
+jobs = true
+mobile = true

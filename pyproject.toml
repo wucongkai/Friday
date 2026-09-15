@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "friday"
+version = "0.1.0"
+description = "会成长的个人助手：个人资料、邮件、求职招聘、手机四端联动"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+mail = ["imapclient"]
+browser = ["playwright"]
+web = ["fastapi", "uvicorn"]
+watch = ["watchfiles"]
+
+[project.scripts]
+friday = "friday.main:main"
+
+[tool.setuptools.packages.find]
+include = ["friday*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

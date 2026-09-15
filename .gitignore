@@ -13,6 +13,7 @@ desktop.ini
 # ---- 密钥与敏感信息（重要！个人助手项目切勿提交）----
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 credentials.json
