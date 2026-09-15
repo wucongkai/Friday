@@ -17,7 +17,7 @@
 
 ```
 Friday/
-├── readme.md          # 本文件
+├── README.md          # 本文件
 ├── doc/               # 实验文档与设计说明
 │   └── 实验要求.md
 └── .gitignore         # 忽略规则（含密钥、个人数据）
