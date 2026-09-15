@@ -1,0 +1,49 @@
+# ---- 操作系统 ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 编辑器 / IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- 密钥与敏感信息（重要！个人助手项目切勿提交）----
+.env
+.env.*
+*.key
+*.pem
+credentials.json
+token.json
+secrets/
+config/secrets/
+.ssh/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# ---- Node / 前端 ----
+node_modules/
+dist/
+build/
+.next/
+*.log
+
+# ---- 个人数据 / 缓存（按需保留，默认忽略）----
+# data/
+# index/
+# *.sqlite
+# *.db
+
+# ---- tmux / 日志 ----
+*.log
+logs/
